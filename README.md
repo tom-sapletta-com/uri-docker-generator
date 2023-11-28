@@ -45,19 +45,19 @@ python uri_docker_generator.py ftp://127.0.0.2:21/movies/first.mp4
 + [List of network protocols (OSI model) - Wikipedia](https://en.wikipedia.org/wiki/List_of_network_protocols_(OSI_model))
 
 the docker should be generated for different protocols like: 
-DHCP Dynamic Host Configuration Protocol
-DNS Domain Name System
-BOOTP Bootstrap Protocol
-HTTP Hyper Text Transfer Protocol
-HTTPS
-NFS
-POP3 Post Office Protocol
-SMTP
-SNMP
-FTP
-NTP
-IRC
-Telnet Tele Communication Protocol
-SSH
-TFTP
-IMAP
++ DHCP Dynamic Host Configuration Protocol
++ DNS Domain Name System
++ BOOTP Bootstrap Protocol
++ HTTP Hyper Text Transfer Protocol
++ HTTPS
++ NFS
++ POP3 Post Office Protocol
++ SMTP
++ SNMP
++ FTP
++ NTP
++ IRC
++ Telnet Tele Communication Protocol
++ SSH
++ TFTP
++ IMAP
