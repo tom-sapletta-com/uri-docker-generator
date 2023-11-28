@@ -1,53 +1,79 @@
 import sys
-import subprocess
+import docker
 from urllib.parse import urlparse
 
-def generate_ftp_dockerfile(port, directory, filename):
-    dockerfile_content = f"""
-    FROM stilliard/pure-ftpd:hardened
-    RUN mkdir -p /home/ftpusers/{directory}
-    RUN echo "test\n test " | pure-pw useradd admin -u ftpuser -d /home/ftpusers/{directory}
-    RUN pure-pw mkdb
-    RUN echo "welcome to ftp server" > /home/ftpusers/{directory}/{filename}
-    EXPOSE {port}
-    CMD ["/run.sh", "-c", "30", "-C", "5", "-l", "puredb:/etc/pure-ftpd/pureftpd.pdb", "-E", "-j", "-R"]
-    """
-    return dockerfile_content
+def build_and_run_container(protocol, port, folder, filename):
+    # Map the protocol to the appropriate Dockerfile creation function
+    protocol_to_docker_setup = {
+        'ftp': setup_ftp,
+        # Add a setup entry for each protocol you want to support...
+        # 'http': setup_http,
+        # 'dhcp': setup_dhcp,
+        # 'dns': setup_dns,
+        'ssh': setup_ssh,
+        # ... more protocols
+    }
+
+    # Check if the protocol is supported
+    if protocol in protocol_to_docker_setup:
+        # Generate the Dockerfile and other necessary setup
+        dockerfile, tag, expose_port = protocol_to_docker_setup[protocol](port, folder, filename)
+        
+        # Build and run the container
+        build_docker_image(dockerfile, tag)
+        container_id = run_container(tag, expose_port)
+        
+        print(f"{protocol.upper()} service is running in container ID: {container_id}")
+    else:
+        print(f"Protocol {protocol} is not supported by this script.")
+
+def setup_ftp(port, folder, filename):
+    # This is where you'll prepare the Dockerfile contents and return them
+    # along with the image tag and the port to expose
+    return ("DockerfileContentsHere", "ftp-image-tag", 21)
+
+def setup_ssh(port, folder, filename):
+    # Setup Dockerfile for SSH service
+    return ("DockerfileContentsHere", "ssh-image-tag", 22)
+
+# You would define additional setup functions for the other protocols
+# def setup_http(port, folder, filename):
+#     # Setup for HTTP
+# ...
 
 def build_docker_image(dockerfile, tag):
+    # Use Docker SDK for Python to build the image from the Dockerfile
     client = docker.from_env()
-    print("Building Docker image...")
-    image, build_log = client.images.build(fileobj=io.StringIO(dockerfile), tag=tag)
-    for log in build_log:
-        if 'stream' in log:
-            print(log['stream'].strip())
+    image, _ = client.images.build(fileobj=io.StringIO(dockerfile), tag=tag)
 
-def run_ftp_container(image, port):
+def run_container(image_tag, port):
+    # Use Docker SDK for Python to run the container
     client = docker.from_env()
-    print("Running Docker container...")
     container = client.containers.run(
-        image,
-        ports={'21/tcp': port},
+        image_tag,
+        ports={f"{port}/tcp": port},
         detach=True
     )
     return container.id
 
 def main(uri):
     parsed_uri = urlparse(uri)
-    
-    if parsed_uri.scheme == 'ftp':
-        port = parsed_uri.port or 21
-        path_parts = parsed_uri.path.strip('/').split('/')
-        directory = path_parts[0]
-        filename = path_parts[-1]
+    protocol = parsed_uri.scheme
+    port = parsed_uri.port or get_default_port_for_protocol(protocol)
+    path_parts = parsed_uri.path.strip('/').split('/')
+    folder = path_parts[0]
+    filename = path_parts[-1]
 
-        dockerfile = generate_ftp_dockerfile(port, directory, filename)
-        image_tag = f"ftp-service-{port}"
-        build_docker_image(dockerfile, image_tag)
-        container_id = run_ftp_container(image_tag, port)
-        print(f"FTP server is running in container ID: {container_id}")
-    else:
-        print(f"Protocol {parsed_uri.scheme} is not supported in this script.")
+    build_and_run_container(protocol, port, folder, filename)
+
+def get_default_port_for_protocol(protocol):
+    # Return the default port for the given protocol
+    return {
+        'ftp': 21,
+        'http': 80,
+        'ssh': 22,
+        # ... and so on for each supported protocol
+    }.get(protocol, None)
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
